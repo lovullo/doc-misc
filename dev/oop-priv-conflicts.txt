@@ -1,0 +1,45 @@
+Private  APIs  and  state  exist  for  the  purpose  of  preventing  change.
+Ultimately, this is a problem with  inheritance in general; the ideal way to
+consider private  state is as its  own independent black box,  separate from
+any  parents (so,  composition).  But foregoing  that,  classes are  message
+passing implementations---a method call passes a message to the object which
+it  then  inteprets and  routes  to  the  appropriate handler  (method).  By
+accepting messages through a public API, you are making a commitment to work
+with users of the  API to validate and accept their input,  and to produce a
+useful and  expected output.  Protected APIs  exist purely  for the  sake of
+inheritance---you do  not want to commit  to a public API  because there are
+details  that are  not suitable  for external  management, but  they may  be
+suitable for  subtypes to manipulate.  So you  provide subtypes with  an API
+that you will commit to. Private  messages have no guarantees outside of the
+context of  that specific class: you  trust nobody to handle  the details of
+the implementation, you wish to maintain encapsulation, and you wish to make
+absolutely no API  guarantees (since you're the only one  to access it). You
+therefore have  no expectation that  anyone will  be messing with  your API,
+since it is wholly inaccessible.
+
+For protected APIs, you expect that there may be conflicts, because you have
+to  play  nicely with  supertypes  also  trying  to communicate  with  their
+subtypes. You further  expect that subtypes may decide to  augment your API,
+or possibly  override it entirely. You  expect that, in the  process, things
+might break, and by exposing a protected  API, you commit to handling such a
+breakage. Similarily with a public API. But if you decide that you will only
+listen  for messages  from the  outside world  through public  and protected
+APIs---you are merely an observer---you would  expect only a single point of
+failure: if the  messages you are observing change in  format (arguments) or
+if the  message no longer exists  (the method disappears). If  you alter the
+message before returning  it to the original recipient  (supertype), you can
+expect that to break as well  if its expectations change. You recognize this
+as a  point of  failure, and  perform the  necessary abstractions  to design
+around such a possibility to handle it cleanly in the future.
+
+You don't design your private APIs for such failures, because those messages
+are never intended for anyone but you. That's like talking to your fiance in
+your house and someone else jumping in  and saying "Yo, I'm your new fiance;
+talk to me!"  Granted, the resolution is simple (although  offensive in both
+contexts)---just call your fiance by another name.
+
+So the problem  isn't insurmountable, but the  fundamental philosophy behind
+the design is that you are  observing the world---perhaps even passively. Of
+course, the better option is to just use composition, and not worry about it
+at all---in which case, you ensure that  your only API failure points are in
+fact the aforementioned. But that's not always possible.
