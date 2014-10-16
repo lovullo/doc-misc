@@ -1,0 +1,70 @@
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Date: Thu, 16 Oct 2014 11:00:49 -0400
+Abstract: LoVullo has scripts to help automate the creation and
+  management of topic branches. That system will need to be modified
+  when moving to JIRA, so developers will have to manually handle
+  topic branches merges in the meantime. This should be done cleanly.
+Subject: Git topic branches: Flyspray -> JIRA
+
+Some of you are already in JIRA, presumably working on tasks.
+Obviously the `git fs` command will not work there.
+
+After we get settled into JIRA a bit and work some things out, I'll be
+updating the command to choose JIRA when necessary (and provide an
+alternate name, with `fs` aliased). But until then, you'll be merging
+manually. Since the `fs` command does a number of things for you,
+here's some stuff to keep in mind:
+
+  - When you run `git fs -m 12345`, this is essentially what happens
+    (simplified to make it easier to grok):
+
+   1  $ git checkout foo/fs12345 \
+   2    && (
+   3      git rebase master \
+   4      && git push --force \
+   5      || git rebase --abort \
+   6    ) \
+   7    && git checkout - \
+   8    && git merge --no-ff foo/fs12345 -m "FS#12345 - Task title" \
+   9    && git push
+
+So here are some recommendations when merging into master:
+
+  - Always try rebasing your branch atop of master before merging
+    (lines 3--5). If you have conflicts, try resolving them. If there
+    are too many conflicts---which is hopefully rare--abort the merge
+    (line 5) and proceed with a normal merge into master. If the
+    rebase is successful, you'll need to forcefully push your branch
+    (line 4) if you plan on keeping it remote.
+      - Note that git will automatically resolve conflicts you have
+        seen in the past if you have the `rerere` option set (which I
+        recommend). In this case, it may pause the rebase and prompt
+        for a resolution, but there may be no conflict markers. Just
+        add the files and `git rebase --continue`.
+
+  - When merging, do *not* allow a fast-forward (--no-ff on line 8).
+    This will force a merge commit, which is especially important if
+    the rebase is successful. This will force a clear delineation:
+
+      master   o--------o--o--o-------o  master'
+                                      /
+      fs12345  o--o--o--o--o--o--o--o
+
+  - The merge commit message (line 8) should be a description of the
+    *entire feature being introduced*. (For this reason, topic
+    branches are sometimes called `feature branches'.) So if task
+    `fs12345` adds a coverage to the rater, then it should state
+    "Coverage X added".
+      - I'd recommend avoiding common words like "added" at the
+        beginning of a commit subject line, since it makes it harder
+        to scan down the list of commits with your eyes for changes.
+        Instead, of "Added foo", say "foo added", which gets more to
+        the point. Sort of like the convention of "Travels of Foo,
+        The" for book/move titles.
+
+Happy hacking!
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
