@@ -1,0 +1,118 @@
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Date: Mon, 6 May 2013 13:19:10 -0400
+Abstract: Rationale is provided for the use of `git pull --rebase` to
+  prevent frequent merge commits from polluting the repository. Note
+  that `gitk` is recommended as a tool because that is used by most
+  other developers; `git log`, `tig`, etc can be used instead.
+Subject: git pull --rebase
+
+[ADDENDUM: Please use `git pull --rebase --preserve-merges` instead so
+that your unpushed merge commits are not removed and the merge
+flattened into the history of its parent.]
+
+
+Please read this. Entirely. Or skim it, print it out and tape it to
+your monitor until you have a chance to read it fully.
+
+
+I've mentioned this before, but now that I have more justification for
+it, I'd like to reiterate: when pulling, please use git pull --rebase
+(or set up an alias to do it for you). The difference is this:
+
+  - git pull does the equivalent of `git fetch && git merge
+    origin/$branchname`; this means that, if it cannot create a
+    fast-forward, it must create are merge commit. This makes the
+    history an unnecessary clusterfuck.
+
+  - git pull --rebase does the equivalent of git fetch, but then,
+    instead of attempting to merge, it will rebase your new commits
+    atop of origin as if they were done after the fetch.
+
+Consider M, your local master, and O, origin/master. Then, a normal
+`git pull` will do this (if it cannot fast-forward):
+
+                    O     M'
+  o---o---o-----o---o-----o
+           \    x   y    /
+            o---o---o---o
+            a   b   c   M
+
+where M' is the merge commit. This is ugly. Notice that it is also
+probably unnecessary. We'd much rather see this, which is what a
+rebase does (a, b and c are just some commits that you've done since
+you last pulled):
+
+                  O
+  o---o---o---o---o---o---o---o---o
+              x   y   a   b   c   M
+
+Notice how the history remains linear.
+
+Now take a look at gitk in master. See how many branches we have
+merging all over the place? Now consider that someone has accidentally
+merged something that they didn't mean to in master. Would you rather
+look at that mess in gitk or a straight line with an occasional
+branch?
+
+Now, history for us will *never* remain linear. In particular, `git
+pull --rebase` only helps to avoid the unnecessary merge commits
+created from pulling; it does not prevent merge commits created from
+multiple people working in different branches and merging those
+changes in; it's not supposed to. But, since people are pulling all
+this time, this will help cut down on unnecessary commits. One example
+is rater-dwelling---95% of the history should be linear.  It's not.
+
+`git pull --rebase` will fail if you would normally get a merge
+conflict with `git pull`. Your options are to resolve the problem and
+do `git rebase --continue`, or do `git rebase --abort`, a normal `git
+pull` and resolve the merge conflict as you normally would.
+
+Please come to me with questions. I might write a script to verbally
+abuse people via e-mail if they do a pull without --rebase when a
+--rebase could have prevented a merge commit if nobody reads this
+e-mail. :O
+
+(If this goes well, there's other things we can discuss to keep things
+more tidy. Another fix is to create repos for larger projects so
+people are not committing so much in a single repo, which drastically
+improves the likelihood of fast-forwards, thereby eliminating even
+more merge commits.)
+
+Attached is a SS of the history of Git's git repository.  There are
+many, many branches and the history is very deep. However, notice
+that, despite this, there are huge blocks of history that are linear.
+Of course, they also have the benefit of a maintainer (Junio) who is
+the only person that can merge in changes, so our situation is more
+complicated, but some of it falls under other practices that we can do
+if things go well.
+
+-----
+
+Repository maintenance is very important and it is not taken seriously
+here, for the most part. Additionally, I'd like to see the following:
+
+  *** More detailed commit messages. I should know what was changed
+      and where by reading the commit message only, without looking at
+      the diff.
+
+  *** Smaller commits. This creates more easily bi-sectable and
+      readable histories. Think of commits as you could factor
+      well-written code. If you haven't committed in a while and have
+      a ton of stuff, use `git add -p` to selectively stage blocks of
+      code and create multiple commits.
+
+  *** Less commits that cause problems or fail tests. In this case, if
+      you are trying to bisect, you have to skip those commits and it
+      results in a headache when trying to figure out what commit
+      caused a particular problem. While it's going to occasionally
+      happen, try to avoid it locally before pushing. If you know for
+      a fact that a commit will break something, *mark it clearly in
+      the commit message and explain what is broken*.
+
+Thank you,
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
+
