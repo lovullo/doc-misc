@@ -1,0 +1,74 @@
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Abstract: A simple explanation of em-value arithmetic to encourage its
+  use in place of absolute measurements like `px`.
+Subject: CSS em values
+
+(Note that ex is CSS3, so unfortunately we can't use it yet on public
+pages.)
+
+`em` should always be used in measurements instead of `px` unless
+pixel-specific measurements are required (e.g. when using images);
+this allows styles to scale cleanly. We know this already.
+
+What I see often is confusion on how to apply it cleanly relative to
+other elements (e.g. for padding, relative positioning, etc); there's
+often guess work involved, or people revert to `px'. Here's an example
+of how it works for those interested.
+
+Say we have:
+
+  .foo { margin-left: 5em; }
+
+5em is relative to the font size of the parent of the element matching
+`.foo'.  Now say we have:
+
+  .foo > h1 { font-size: 2em; }
+
+And we want the h1 to be a hanging indent (ignore the left margin). We
+cannot simply do this:
+
+  .foo > h1 { font-size: 2em; margin-left: -5em; }
+
+as that would hang too far too the left: h1's font size is doubled and
+so its the effect on its margin. The solution is:
+
+  .foo > h1 { font-size: 2em; margin-left -2.5em; }
+
+This will be pixel-perfect flush with the left margin.
+
+If we have:
+
+  .foo2 { margin-left: 7em; }
+  .foo2 > h1 { font-size: 3em; }
+
+then the same logic applies, which is why you will sometimes see very
+specific em-values:
+
+  .foo2 > h1 { font-size: 3em; margin-left: 2.333em; }
+
+
+So, as a final example:
+
+  .foo { font-size: 2em; }
+  .foo > .bar { font-size: 1.25em; }
+  .foo > .bar > .baz { font-size: 0.5em; }
+
+The font sizes are:
+
+  .foo = 2em
+  .bar = 2.5em
+  .baz = 1.25em
+
+Hope that helps. Developer tools will show you the calculated values
+if you inspect the elements and choose the "computed" tab on the right
+(in either FF or Chrom(ium)). It is simple arithmetic, but I think web
+developers tend to get confused by all the cascading that goes on
+(they are cascading stylesheets, after all).
+
+Now there's no excuse to not use em-values. ;)
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
+
