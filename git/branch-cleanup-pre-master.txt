@@ -1,0 +1,87 @@
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Date: Wed, 19 Mar 2014 09:57:46 -0400
+Abstract: Before merging a topic branch into `master`, it should be
+  cleaned up so as not to pollute the repository with clutter. In
+  particular, unnecessary merge commits should be removed. As an
+  example: `master` is often merged into topic branches to keep it
+  up-to-date with recent work and reduce the risk of conflicts.
+Subject: Cleaning up branch before merge into master
+
+tl;dr: This problem won't exist if you don't merge master into your
+branch and instead rebase atop of master. If you have done that, use
+`git rebase --interactive --preserve-merges` to get rid of them.
+
+
+Shelly was wonderfully considerate toward the state of our repository
+and recently asked me to help her resolve some rebase issues. It's an
+interesting issue, so here it's outlined here.
+
+I mentioned in a previous e-mail that, rather than merging master into
+your branch:
+
+  # bad
+  $ git merge master
+
+you should rebase atop of master to keep the history linear and clean:
+
+  # good
+  $ git rebase master
+
+This ensure that, when you merge your branch into master, you won't
+end up with this:
+
+  M  FS#1234 Do stuff
+  |\
+  | o  Made some FS#1234 changes
+  | |\
+  | | o Merge master
+  | | o Made some FS#1234 changes
+  | | |\
+  | | | o  Merge master
+  | | | o  Made some FS#1234 changes
+  | | | |\
+  | | | | ... you get the ppoint
+
+
+**But let's pretend that you did it anyway.** Actually, during
+development, it may be useful to merge master instead of rebasing,
+because you only have to resolve merge conflicts once, but you would
+have to resolve rebase errors every single time.
+
+There's a chance that `fs -m' will get rid of the merges for you, but
+if it can't, it'll fall back to a merge and retain everything. And
+chances are, as was the case with Shelly, a normal rebase will be
+confused by the merges into master, so it's highly likely that it
+*will* fail. Therefore, *before* merging into master, while you're
+still on your branch, you can do this:
+
+  # you can also use the shortmap: Ri --preserve-merges
+  $ git rebase --interactive --preserve-merges
+
+This will open your editor and will list all of your commits *as well
+as* all of your merge commits. Delete each merge commit where you
+merged master into your branch and keep the commits that you made
+directly on your branch. Save and close.
+
+The rebase will continue by taking all the commits in your branch
+(sans the merge ones) that aren't in master and commit them freshly
+atop of master one by one, as if you did a `git reset --hard master`
+and started to cherry-pick them.  Therefore, there may be conflicts.
+If you get a conflict, it will output directions telling you what to
+do.
+
+After you're done, your branch will have been rewritten and you will
+need to forcefully push it to the server:
+
+  $ git push --force
+
+
+**Please only rebase your own branches. You are rewriting history so
+you should not do this on branches that others are also using unless
+you talk to them first.**
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
+
