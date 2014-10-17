@@ -1,0 +1,63 @@
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Date: Tue, 22 Apr 2014 09:32:05 -0400
+Abstract: AutoHotkey can be used to manage Windows' hotkeys and bind
+  arbitrary scripts. Here, I use it to try to pretend that Windows
+  does not exist on my work PC.
+Subject: Windows hotkey stuffs
+
+This may or may not be useful to Jim/Jeff, but I'm including them
+anyway in case they want to do crazy scripting stuffs.
+
+Since I have my GNU/Linux VM that I work primarily out of, I found the
+default Windows hotkeys to be far too intrusive. In particular, I use
+the Windows key with my window manager (e.g. Win+L is supposed to
+resize a window in the tiling window manager, not lock my screen).
+
+Windows' window manager is odd in that it's inconceivably
+uncustomizable through conventional means. So I found this:
+
+  http://www.autohotkey.com/
+
+Quickstart here:
+
+  http://www.autohotkey.com/docs/Tutorial.htm
+
+Commands here:
+
+  http://www.autohotkey.com/docs/commands.htm
+
+
+== Disabling Windows HotKeys ==
+I'd rather handle my own mappings using AutHotkey. You can disable
+Win+X hotkeys using gpedit.msc:
+
+  User Configuration
+  -> Administrative Templates
+  -> All Settings
+  -> Turn off Windows+X Hotkeys
+
+But this does not disable Win+L. And for those who care (probably
+not), here's how to disable it (by default, AutoHotkey will run the
+script for #l, but Windows will still lock the screen).
+
+  http://www.howtogeek.com/howto/windows-vista/disableenable-lock-workstation-functionality-windows-l/
+
+The problem is, that disables locking the workstation entirely! :O As
+in, there's no possible way to lock it, even with DllCall. So here's
+my solution (AutoHokey script) to use Win+PrintScreen (which I used to
+use on my GNU/Linux system):
+
+#PrintScreen::
+  RegWrite, REG_DWORD, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Policies\System, DisableLockWorkstation, 0
+  Sleep 100
+  DllCall("LockWorkStation")
+  Sleep 100
+  RegWrite, REG_DWORD, HKEY_CURRENT_USER, Software\Microsoft\Windows\CurrentVersion\Policies\System, DisableLockWorkstation, 1
+  Run "C:\Program Files (x86)\Git\bin\ssh.exe" gerwitm-ubuntu2 afd
+return
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
+
