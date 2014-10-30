@@ -1,0 +1,210 @@
+Subject: Git branch management (was: Git topic branches: Flyspray -> JIRA)
+From: Mike Gerwitz <gerwitzm@lovullo.com>
+Summary: Shorthands and automatic handlings of rebasing, --no-ff merges,
+  creation of remote tracking branches, deleting and recovering
+  branches, and reverting changes.
+Date: Thu, 30 Oct 2014 16:21:12 -0400
+
+Alright: I have some more useful shortcuts to add to my original
+e-mail. As a summary, you can just read the shell commands. Sorry---this
+is lengthy, but I hope it's useful!
+
+(This was prompted by me being frustrated with my lack of scripting in
+this new environment. I'll have more shortmaps and an `fs`-like script
+again at some point.)
+
+
+Rebasing
+--------
+I've told everyone to use `git pull --rebase` (or the `Pr` shortmap) to
+keep the history clean. This is something that I always want done on
+master[0], so you can set this option to ensure that, any time you pull
+`master` from *any* repository, a rebase is performed:
+
+  $ git config --global branch.master.rebase true
+
+
+No Fast-Forwards
+----------------
+I ask everyone to ensure that merge commits are *always* created when
+merging into `master`. This is conventionally done using `git merge
+--no-ff`; if you forget (or don't provide) it, then git will just
+fast-forward to your branch, making it look like you committed directly
+atop of master and not providing any delineation. That should
+hypothetically be always since, since I also ask everyone to rebase atop
+of master before merging.
+
+This configuration option will perform `--no-ff` for you when merging
+into master:
+
+  $ git config --global branch.master.mergeoptions --no-ff
+
+Remember that your merge commit should describe the *feature* that was
+introduced (be it a change, bugfix, etc) and should reference the
+appropriate bug/task/issue identifier.
+
+
+Merge Shorthand
+---------------
+Just a reminder that you can merge the most recently accessed branch
+using a single dash for its name. So, for example:
+
+  # if run on branch `foo`, would merge `foo`
+  $ co master && m -
+
+So, as a general workflow for merging into master (note that --no-ff is
+not required if you perform the above configuration change):
+
+  $ R master && co master && m -
+
+
+New Branches
+------------
+The `fs` command was convenient to set up a new remote and
+remote-tracking branch without much effort. `git branch` has a `--track`
+option, but it only works if the remote branch actually exists. You can
+do this (shortened using shortmaps) to achieve the same effect as `fs`:
+
+  $ co -b user/branch && p -u origin !#:2
+
+The `!#:2` is technically unnecessary with our configuration (since we
+have the config option `push.default = current`), but I'm including it
+to be safe. It's a bash history command that says "take the second
+argument in the current command line", which happens to be `user/branch`
+above.
+
+
+Deleting Branches
+-----------------
+As a reminder: please delete remote branches when you are done with them
+(`git branch -d` only deletes local). To do so, include an empty ref in
+the refspec:
+
+  $ b -d user/branch && p origin :!#:2
+
+  # or, if you want to avoid using bash history expansion:
+  $ b -d user/branch && p origin :user/branch
+
+
+Reverting Merged Branches
+-------------------------
+This has come up a few times recently. If you merged a topic branch into
+master, you can revert it like so:
+
+  $ git revert -m1 <MERGE_COMMIT>
+
+where `MERGE_COMMIT` is the actual commit of the merge. The `-m` option
+specifies the *mainline*, which is the tree that your branch was merged
+*into*. `master` is our mainline in this case.
+
+   [If you forget that, then observe the log output for the commit:
+
+      $ git log -1 <MERGE_COMMIT>
+
+    There will be a "Merge:" line containing two refs; those are
+    mainlines 1 and 2 respectively. You can observe that the first
+    mainline references master before your merge, and the second
+    mainline references the tip of your branch that was merged.]
+
+This generates a commit that is the opposite of all the changes
+introduced by the merge. You commit and push it as any normal commit. In
+fact, if you wanted to see the patch that it would generate to perform
+the revert, you could do so easily like this:
+
+  $ git diff HEAD..<MAINLINE_1>
+
+If you want to inspect the revert before having it auto-commit, or
+modify it yourself to do a partial revert:
+
+  $ git revert -m1 <MERGE_COMMIT> --no-commit
+
+If your merge was a fast-forward, then shame on you! `git revert`
+accepts a list of commits, including treeishes. Have at it.
+
+Remember: this revert commit will be seen as *newer* than the changes in
+your branch, so re-merging your branch will have no effect; instead,
+revert the revert, and then merge in any additional changes you have
+since made on your branch. I recommend reverting the revert within your
+branch before making any changes, which will then handle everything for
+you when you eventually merge back into `master`.
+
+
+Recovering Branches (e.g. After Revert)
+---------------------------------------
+If you revert a merge, chances are it needs more work.
+
+If you need to *recover* your branch (because you deleted it, thinking
+you were done...which is reasonable!), simply branch off of the *second*
+mainline:
+
+  $ co -b user/branch <MAINLINE_2>
+
+
+[0]: There is a `pull.rebase` option to do that by default globally on
+pull, but that's dangerous and a bit too controlling. There is also
+`branch.autosetuprebase` if you want this to take effect automatically
+for your branches.
+
+
+Mike Gerwitz <gerwitzm@lovullo.com> writes:
+
+> Some of you are already in JIRA, presumably working on tasks. Obviously the
+> `git fs` command will not work there.
+>
+> After we get settled into JIRA a bit and work some things out, I'll be
+> updating the command to choose JIRA when necessary (and provide an alternate
+> name, with `fs` aliased). But until then, you'll be merging manually. Since
+> the `fs` command does a number of things for you, here's some stuff to keep
+> in mind:
+>
+>   - When you run `git fs -m 12345`, this is essentially what happens
+>     (simplified to make it easier to grok):
+>
+>    1  $ git checkout foo/fs12345 \
+>    2    && (
+>    3      git rebase master \
+>    4      && git push --force \
+>    5      || git rebase --abort \
+>    6    ) \
+>    7    && git checkout - \
+>    8    && git merge --no-ff foo/fs12345 -m "FS#12345 - Title of task" \
+>    9    && git push
+>
+> So here are some recommendations when merging into master:
+>
+>   - Always try rebasing your branch atop of master before merging (lines
+>     3--5). If you have conflicts, try resolving them. If there are too many
+>     conflicts---which is hopefully rare--abort the merge (line 5) and
+>     proceed with a normal merge into master. If the rebase is successful,
+>     you'll need to forcefully push your branch (line 4) if you plan on
+>     keeping it remote.
+>       - Note that git will automatically resolve conflicts you have seen in
+>         the past if you have the `rerere` option set (which I recommend). In
+>         this case, it may pause the rebase and prompt for a resolution, but
+>         there may be no conflict markers. Just add the files and `git rebase
+>         --continue`.
+>
+>   - When merging, do *not* allow a fast-forward (--no-ff on line 8). This
+>     will force a merge commit, which is especially important if the rebase
+>     is successful. This will force a clear delineation:
+>
+>       master   o--------o--o--o-------o  master'
+>                                       /
+>       fs12345  o--o--o--o--o--o--o--o
+>
+>   - The merge commit message (line 8) should be a description of the *entire
+>     feature being introduced*. (For this reason, topic branches are
+>     sometimes called `feature branches'.) So if task `fs12345` adds a
+>     coverage to the rater, then it should state "Coverage X added".
+>       - I'd recommend avoiding common words like "added" at the beginning of
+>         a commit subject line, since it makes it harder to scan down the
+>         list of commits with your eyes for changes. Instead, of "Added foo",
+>         say "foo added", which gets more to the point. Sort of like the
+>         convention of "Travels of Foo, The" for book/move titles.
+>
+> Happy hacking!
+
+-- 
+Mike Gerwitz
+Senior Programmer
+LoVullo Associates, Inc.
